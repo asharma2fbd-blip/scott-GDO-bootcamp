@@ -1,0 +1,124 @@
+---
+- name: Configure GDO Bootcamp Web and Database Management Stack
+  hosts: localhost
+  connection: local
+  become: yes
+
+  vars:
+    rds_endpoint: "devops-bootcamp-db.cv8osl68iyqw.ap-south-1.rds.amazonaws.com"
+    basic_auth_user: "gdo-auth"
+    basic_auth_pass: "Security123!"
+    phpmyadmin_dir: "/usr/share/nginx/html/secretmysqladmin"
+
+  tasks:
+    - name: 1. Update system packages and install dependencies
+      ansible.builtin.dnf:
+        name:
+          - nginx
+          - php
+          - php-fpm
+          - php-mysqli
+          - php-mbstring
+          - php-xml
+          - httpd-tools
+          - tar
+          - wget
+        state: present
+        update_cache: yes
+
+    - name: 2. Enable and start PHP-FPM service
+      ansible.builtin.systemd:
+        name: php-fpm
+        state: started
+        enabled: yes
+
+    - name: 3. Fetch IMDSv2 Token
+      ansible.builtin.shell: |
+        curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600"
+      register: imds_token
+      changed_when: false
+
+    - name: 4. Fetch EC2 Instance ID using IMDSv2
+      ansible.builtin.shell: |
+        curl -s -H "X-aws-ec2-metadata-token: {{ imds_token.stdout }}" http://169.254.169.254/latest/meta-data/instance-id
+      register: ec2_instance_id
+      changed_when: false
+
+    - name: 5. Deploy Port 80 Landing Page with Instance ID
+      ansible.builtin.copy:
+        dest: /usr/share/nginx/html/index.html
+        content: |
+          <h1>GDO Bootcamp Web Server</h1>
+          <p>Configured dynamically via Ansible</p>
+          <p>Instance ID: {{ ec2_instance_id.stdout }}</p>
+        owner: nginx
+        group: nginx
+        mode: '0644'
+
+    - name: 6. Generate HTTP Basic Auth .htpasswd file
+      ansible.builtin.command:
+        cmd: "htpasswd -cb /etc/nginx/.htpasswd {{ basic_auth_user }} {{ basic_auth_pass }}"
+      args:
+        creates: /etc/nginx/.htpasswd
+
+    - name: 7. Configure Nginx routing for /secretmysqladmin and PHP-FPM
+      ansible.builtin.copy:
+        dest: /etc/nginx/default.d/phpmyadmin.conf
+        content: |
+          location /secretmysqladmin {
+              auth_basic "Restricted Bootcamp Access";
+              auth_basic_user_file /etc/nginx/.htpasswd;
+              index index.php index.html;
+          }
+
+          location ~ \.php$ {
+              fastcgi_pass unix:/run/php-fpm/www.sock;
+              fastcgi_index index.php;
+              fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+              include fastcgi_params;
+          }
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: 8. Create phpMyAdmin directory
+      ansible.builtin.file:
+        path: "{{ phpmyadmin_dir }}"
+        state: directory
+        owner: nginx
+        group: nginx
+        mode: '0755'
+
+    - name: 9. Download and unpack phpMyAdmin
+      ansible.builtin.unarchive:
+        src: "https://www.phpmyadmin.net/downloads/phpMyAdmin-latest-all-languages.tar.gz"
+        dest: "{{ phpmyadmin_dir }}"
+        remote_src: yes
+        extra_opts: ['--strip-components=1']
+        owner: nginx
+        group: nginx
+        creates: "{{ phpmyadmin_dir }}/index.php"
+
+    - name: 10. Configure phpMyAdmin to connect to external RDS
+      ansible.builtin.copy:
+        dest: "{{ phpmyadmin_dir }}/config.inc.php"
+        content: |
+          <?php
+          $cfg['blowfish_secret'] = 'gdo-bootcamp-secret-key-32-chars-long!';
+          $i = 0;
+          $i++;
+          $cfg['Servers'][$i]['auth_type'] = 'cookie';
+          $cfg['Servers'][$i]['host'] = '{{ rds_endpoint }}';
+          $cfg['Servers'][$i]['compress'] = false;
+          $cfg['Servers'][$i]['AllowNoPassword'] = false;
+          $cfg['UploadDir'] = '';
+          $cfg['SaveDir'] = '';
+        owner: nginx
+        group: nginx
+        mode: '0644'
+
+    - name: 11. Ensure Nginx service is enabled and started
+      ansible.builtin.systemd:
+        name: nginx
+        state: restarted
+        enabled: yes
