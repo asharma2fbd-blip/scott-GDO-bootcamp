@@ -38,7 +38,7 @@ resource "aws_security_group" "web_sg" {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = [var.admin_ip]
   }
 
   ingress {
@@ -46,7 +46,7 @@ resource "aws_security_group" "web_sg" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = [var.admin_ip]
   }
 
   egress {
@@ -60,7 +60,7 @@ resource "aws_security_group" "web_sg" {
   tags = {
     Name    = "gdo-bootcamp-web-sg"
     Project = "GDO-Bootcamp"
-    Task    = "6"
+    Task    = "7"
   }
 }
 
@@ -139,6 +139,7 @@ output "rds_endpoint" {
   value       = aws_db_instance.rds_instance.endpoint
 }
 
+# 7. Variables Declaration
 variable "db_username" {
   description = "RDS master username"
   type        = string
@@ -148,4 +149,10 @@ variable "db_password" {
   description = "RDS master password"
   type        = string
   sensitive   = true
+}
+
+# Add this variable at the bottom of main.tf with your other variables:
+variable "admin_ip" {
+  description = "Authorized administrative public IP address in CIDR format"
+  type        = string
 }
