@@ -1,0 +1,25 @@
+pipeline {
+    agent any
+    
+    stages {
+        stage('Build Golden AMI (Packer)') {
+            steps {
+                dir('Packer') {
+                    echo 'Initializing and Building AMI via Packer...'
+                    sh 'packer init .'
+                    sh 'packer build build.pkr.hcl'
+                }
+            }
+        }
+        
+        stage('Deploy Infrastructure (Terraform)') {
+            steps {
+                dir('Terraform') {
+                    echo 'Initializing and Applying Terraform...'
+                    sh 'terraform init'
+                    sh 'terraform apply -auto-approve'
+                }
+            }
+        }
+    }
+}
