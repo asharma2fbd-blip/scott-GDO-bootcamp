@@ -108,7 +108,7 @@ resource "aws_instance" "web_instance" {
 
 # 5. Provision the Managed RDS Database
 resource "aws_db_instance" "rds_instance" {
-  identifier             = "gdo-bootcamp-db-tf"
+  identifier             = "gdo-db-restored"
   allocated_storage      = 20
   max_allocated_storage  = 20
   storage_type           = "gp2"
