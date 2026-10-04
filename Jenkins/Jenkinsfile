@@ -21,5 +21,15 @@ pipeline {
                 }
             }
         }
+
+        stage('Deploy to Kubernetes (Skaffold)') {
+            steps {
+                echo 'Building and deploying to Kind cluster via Skaffold...'
+                // Manually load the image to prevent ImagePullBackOff in Kind
+                sh 'docker build -t gdo-nginx-color ./Docker'
+                sh 'kind load docker-image gdo-nginx-color --name gdo-k8s'
+                sh 'skaffold run --tail=false'
+            }
+        }
     }
 }

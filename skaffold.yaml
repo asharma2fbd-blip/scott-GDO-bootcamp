@@ -1,0 +1,16 @@
+apiVersion: skaffold/v4beta7
+kind: Config
+metadata:
+  name: gdo-kubernetes-app
+build:
+  local:
+    push: false
+  artifacts:
+    - image: gdo-nginx-color
+      context: Docker
+      docker:
+        dockerfile: Dockerfile
+deploy:
+  kubectl:
+    manifests:
+      - Kubernetes/base/*.yaml
