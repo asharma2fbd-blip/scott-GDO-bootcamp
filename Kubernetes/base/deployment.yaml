@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gdo-color-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gdo-color-app
+  template:
+    metadata:
+      labels:
+        app: gdo-color-app
+    spec:
+      containers:
+      - name: nginx
+        image: gdo-nginx-color:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 80

@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: gdo-color-service
+spec:
+  selector:
+    app: gdo-color-app
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
