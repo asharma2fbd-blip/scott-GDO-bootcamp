@@ -10,7 +10,9 @@ build:
       context: Docker
       docker:
         dockerfile: Dockerfile
+manifests:
+  kustomize:
+    paths:
+      - Kubernetes/base
 deploy:
-  kubectl:
-    manifests:
-      - Kubernetes/base/*.yaml
+  kubectl: {}
